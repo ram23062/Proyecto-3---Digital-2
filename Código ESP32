@@ -1,1 +1,99 @@
+// Universidad del Valle de Guatemala
+// BE3029 - Electronica Digital 2
+// Oscar Ramírez - Youri Estrada
+// Proyecto 3
+// 04/11/2025 - 17/11/2025
 
+//Librerías
+#include <Arduino.h>
+#include <stdint.h>
+
+
+//Pines
+#define I2C_DEV_ADDR 0x55
+#define NEO
+#define sensor 36
+
+
+// Variables Globales
+int lectura;
+uint8_t tx_2_buf[8];
+uint8_t rx2_buf[8];
+
+//I2C
+
+
+//Prototipos de funciones
+/*
+void onRequest();
+void onReceive(int len);
+*/
+
+/*•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• SETUP °︶•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• */
+void setup()
+{
+  Serial.begin(115200);
+  
+
+  pinMode(sensor, INPUT);
+
+  //Configuración I2C
+  /*
+  Wire.onReceive(onReceive);
+  Wire.onRequest(onRequest);
+  Wire.begin((uint8_t)I2C_DEV_ADDR);
+  */
+}
+
+
+/*•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• LOOP °︶•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• */
+void loop()
+{
+  
+
+  if (Serial.available()>0){ //Verifica si hay bytes disponibles de lo que se recibió
+    char dato_recibido = Serial.read(); //Lee el primer byte del comando recibido
+    if (dato_recibido == '1'){
+      Serial.println("\n--- Solicitud recibida por UART ---");
+      //Ejecutar la respuesta solicitada (Enviar info del sensor)
+       //Lectura del potenciómetro
+      lectura= analogRead(sensor);
+      Serial.print ("Dato:");
+      Serial.println(lectura);
+      delay(50);
+    } else {
+      Serial.print("Dato inválido");
+    }
+  }
+}
+
+//Funciones auxiliares
+
+/*
+void onRequest() {
+  // si quieres, puedes volver a medir aquí en lugar de usar el guardado arriba
+  // uint16_t lectura = analogRead(pot1);
+  // uint8_t pot8 = lectura >> 4;
+  // Wire.write(pot8);
+
+  Wire.write(lectura);
+  Serial.print("Enviado a Nucleo: ");
+  Serial.println(lectura);
+}
+
+void onReceive(int len) {
+  while (Wire.available()) {
+    uint8_t cmd = Wire.read();
+    ultimoCmd = cmd;
+    Serial.print("Cmd I2C recibido: ");
+    Serial.println((char)cmd);
+
+    // si el master pide el pot (tú mandas '2'), lo medimos YA
+    if (cmd == '2') {
+      lectura = analogRead(pot1); 
+      Serial.print("Medido por comando: ");
+      Serial.println(lectura);
+    }
+  }
+}
+  */
