@@ -16,7 +16,7 @@
 
 //Pines
 #define NEO 32
-#define NUMPIXELS 24
+#define NUMPIXELS 3
 #define desmonte 18
 #define guardado 19
 
@@ -84,47 +84,43 @@ void loop()
       //Indicador de recibido: Naranja
       setAllPixelsColor(naranja);
       Serial.println("\n--- Solicitud recibida por UART ---");
-      delay(DELAYVAL);
+      delay(DELAYVAL*2);
       //Ejecutar la respuesta solicitada (Enviar info del sensor)
       leerSensor();
       //Construir el buffer
       int dato_enviado = sprintf((char*)tx_2_buf,"%.2f\n", Temperatura);
       //Dato enviado a la nucleo
       Serial2.write(tx_2_buf, dato_enviado);
+      //Regresar 
+      setAllPixelsColor(rojo);
+    } else if (dato_recibido == '2'){
       //Indicador de enviado: amarillo
       setAllPixelsColor(amarillo);
       //Debug por serial para verificar
       Serial.print ("Enviado a Nucleo (UART2): ");
-      Serial.write(tx_2_buf, dato_enviado); // Muestra la cadena enviada
-      delay(DELAYVAL); 
-      // 4. Volver al estado base (Rojo)
+      delay(DELAYVAL*2); 
+      //Volver al estado base (Rojo)
       setAllPixelsColor(rojo);
-    } else {
+    } else if (dato_recibido == '3'){
+      setAllPixelsColor(verde);
+      Serial.println("Datos guardados en SD");
+      delay(DELAYVAL*2);
+      //Volver al estado base
+      setAllPixelsColor(rojo);
+    }else if (dato_recibido == '4'){
+      setAllPixelsColor(morado);
+      Serial.println("Tarjeta SD desmontada");
+      delay(DELAYVAL*2);
+      //Volver al estado base
+      setAllPixelsColor(rojo);
+    }
+      else {
       Serial.print("Dato inválido: ");
       Serial.println(dato_recibido);
     }
   }
-
-  if(digitalRead(guardado) == 0){
-    setAllPixelsColor(verde);
-    Serial.println("Datos guardados en SD");
-    delay(DELAYVAL*2);
-    //Volver al estado base
-    setAllPixelsColor(rojo);
-  } else if (digitalRead(desmonte) == 0){
-    setAllPixelsColor(morado);
-    Serial.println("Tarjeta SD desmontada");
-    delay(DELAYVAL*2);
-    //Volver al estado base
-    setAllPixelsColor(rojo);
-  }
-leerSensor();
-Serial.print("Lectura de temperatura:");
-Serial.println(Temperatura);
-delay(1000);
   
   
-
 }
 
 //Funciones auxiliares
