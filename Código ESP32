@@ -7,93 +7,142 @@
 //Librerías
 #include <Arduino.h>
 #include <stdint.h>
+//#include <Adafruit_BME280.h>
+#include <Adafruit_BMP280.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+#include <Adafruit_NeoPixel.h>
 
 
 //Pines
-#define I2C_DEV_ADDR 0x55
-#define NEO
-#define sensor 36
+#define NEO 32
 
+#define NUMPIXELS 24
+#define desmonte 18
+#define guardado 19
+
+//Sensor BMP280
+Adafruit_BMP280 bmp;
 
 // Variables Globales
-int lectura;
-uint8_t tx_2_buf[8];
+uint8_t tx_2_buf[16];
 uint8_t rx2_buf[8];
+float Temperatura;
 
+//Neopixel
+Adafruit_NeoPixel pixels(NUMPIXELS, NEO, NEO_GRB + NEO_KHZ800);
+uint32_t amarillo;
+uint32_t rojo;
+uint32_t morado;
+uint32_t naranja;
+uint32_t verde;
+#define DELAYVAL 500
 //I2C
-
-
-//Prototipos de funciones
-/*
-void onRequest();
-void onReceive(int len);
-*/
+//Prototipo de función
+void leerSensor(void);
+void setAllPixelsColor(uint32_t color);
 
 /*•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• SETUP °︶•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• */
 void setup()
 {
   Serial.begin(115200);
+  Serial2.begin(115200);
+  Wire.begin(21,22);
+  Serial.println("\nEscaneando el bus I2C...");
+  Serial.println("---------------------------");
   
+  //Inicialización del sensor MBP280/BME280
+  // Inicialización definitiva en la dirección 0x77
+  
+  if (!bmp.begin(0x77)) { 
+        Serial.println("ERROR FATAL: Sensor I2C no encontrado en 0x77.");
+        Serial.println("El I2C esta vivo, pero el sensor no responde. Revisar VCC/GND.");
+        while (1) {
+            delay(100); 
+        }
+    } else {
+        Serial.println("Sensor BMP280/BME280 encontrado y configurado en 0x77. ¡OK!");
+    }
+  
+  //Potenciómetro de prueba
+  pinMode(desmonte, INPUT_PULLUP);
+  pinMode(guardado, INPUT_PULLUP);
 
-  pinMode(sensor, INPUT);
-
-  //Configuración I2C
-  /*
-  Wire.onReceive(onReceive);
-  Wire.onRequest(onRequest);
-  Wire.begin((uint8_t)I2C_DEV_ADDR);
-  */
+  //Neopixel
+  pixels.begin();
+  //Configuración de colores
+  amarillo = pixels.Color(255, 255, 0);
+  rojo = pixels.Color(255, 0, 0);
+  morado = pixels.Color(150, 0, 128);
+  naranja = pixels.Color(255, 50, 0);
+  verde = pixels.Color(0, 255, 0);
+  pixels.clear();
+  setAllPixelsColor(rojo);
 }
 
 
 /*•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• LOOP °︶•︶°︶•︶°︶•︶°︶•︶°︶•︶°︶• */
 void loop()
 {
+  //En espera
+  setAllPixelsColor(rojo);
+  pixels.clear();
   
-
-  if (Serial.available()>0){ //Verifica si hay bytes disponibles de lo que se recibió
-    char dato_recibido = Serial.read(); //Lee el primer byte del comando recibido
+  
+  if (Serial2.available()>0){ //Verifica si hay bytes disponibles de lo que se recibió
+    char dato_recibido = Serial2.read(); //Lee el primer byte del comando recibido
     if (dato_recibido == '1'){
+      //Indicador de recibido: Naranja
+      setAllPixelsColor(rojo);
       Serial.println("\n--- Solicitud recibida por UART ---");
+      delay(DELAYVAL);
       //Ejecutar la respuesta solicitada (Enviar info del sensor)
-       //Lectura del potenciómetro
-      lectura= analogRead(sensor);
-      Serial.print ("Dato:");
-      Serial.println(lectura);
-      delay(50);
+      leerSensor();
+      //Construir el buffer
+      int dato_enviado = sprintf((char*)tx_2_buf,"%.2f\n", Temperatura);
+      //Dato enviado a la nucleo
+      Serial2.write(tx_2_buf, dato_enviado);
+      //Indicador de enviado: amarillo
+      setAllPixelsColor(amarillo);
+      //Debug por serial para verificar
+      Serial.print ("Enviado a Nucleo (UART2): ");
+      Serial.write(tx_2_buf, dato_enviado); // Muestra la cadena enviada
+      delay(DELAYVAL); 
+      // 4. Volver al estado base (Rojo)
+      setAllPixelsColor(rojo);
     } else {
-      Serial.print("Dato inválido");
+      Serial.print("Dato inválido: ");
+      Serial.println(dato_recibido);
     }
   }
+
+  if(digitalRead(guardado) == 0){
+    setAllPixelsColor(verde);
+    Serial.println("Datos guardados en SD");
+    delay(DELAYVAL*2);
+    //Volver al estado base
+    setAllPixelsColor(rojo);
+  } else if (digitalRead(desmonte) == 0){
+    setAllPixelsColor(morado);
+    Serial.println("Tarjeta SD desmontada");
+    delay(DELAYVAL*2);
+    //Volver al estado base
+    setAllPixelsColor(rojo);
+  }
+    
+  
+  
+
 }
 
 //Funciones auxiliares
-
-/*
-void onRequest() {
-  // si quieres, puedes volver a medir aquí en lugar de usar el guardado arriba
-  // uint16_t lectura = analogRead(pot1);
-  // uint8_t pot8 = lectura >> 4;
-  // Wire.write(pot8);
-
-  Wire.write(lectura);
-  Serial.print("Enviado a Nucleo: ");
-  Serial.println(lectura);
+void leerSensor(){
+  Temperatura=bmp.readTemperature();
 }
-
-void onReceive(int len) {
-  while (Wire.available()) {
-    uint8_t cmd = Wire.read();
-    ultimoCmd = cmd;
-    Serial.print("Cmd I2C recibido: ");
-    Serial.println((char)cmd);
-
-    // si el master pide el pot (tú mandas '2'), lo medimos YA
-    if (cmd == '2') {
-      lectura = analogRead(pot1); 
-      Serial.print("Medido por comando: ");
-      Serial.println(lectura);
+void setAllPixelsColor(uint32_t color) {
+    pixels.clear(); // Opcional, pero ayuda a asegurar que los colores anteriores se borren
+    for(int i = 0; i < NUMPIXELS; i++) { 
+        pixels.setPixelColor(i, color);
     }
-  }
+    pixels.show(); 
 }
-  */
