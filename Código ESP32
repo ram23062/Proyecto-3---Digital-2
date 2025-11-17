@@ -8,21 +8,20 @@
 #include <Arduino.h>
 #include <stdint.h>
 //#include <Adafruit_BME280.h>
-#include <Adafruit_BMP280.h>
+//#include <Adafruit_BMP280.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
-
+#include <Temperature_LM75_Derived.h>
 
 //Pines
 #define NEO 32
-
 #define NUMPIXELS 24
 #define desmonte 18
 #define guardado 19
 
-//Sensor BMP280
-Adafruit_BMP280 bmp;
+//Sensor LM75
+Generic_LM75 termo(0x48);
 
 // Variables Globales
 uint8_t tx_2_buf[16];
@@ -51,20 +50,10 @@ void setup()
   Serial.println("\nEscaneando el bus I2C...");
   Serial.println("---------------------------");
   
-  //Inicialización del sensor MBP280/BME280
-  // Inicialización definitiva en la dirección 0x77
+  //Inicialización del sensor LM75
   
-  if (!bmp.begin(0x77)) { 
-        Serial.println("ERROR FATAL: Sensor I2C no encontrado en 0x77.");
-        Serial.println("El I2C esta vivo, pero el sensor no responde. Revisar VCC/GND.");
-        while (1) {
-            delay(100); 
-        }
-    } else {
-        Serial.println("Sensor BMP280/BME280 encontrado y configurado en 0x77. ¡OK!");
-    }
-  
-  //Potenciómetro de prueba
+
+
   pinMode(desmonte, INPUT_PULLUP);
   pinMode(guardado, INPUT_PULLUP);
 
@@ -93,7 +82,7 @@ void loop()
     char dato_recibido = Serial2.read(); //Lee el primer byte del comando recibido
     if (dato_recibido == '1'){
       //Indicador de recibido: Naranja
-      setAllPixelsColor(rojo);
+      setAllPixelsColor(naranja);
       Serial.println("\n--- Solicitud recibida por UART ---");
       delay(DELAYVAL);
       //Ejecutar la respuesta solicitada (Enviar info del sensor)
@@ -129,7 +118,10 @@ void loop()
     //Volver al estado base
     setAllPixelsColor(rojo);
   }
-    
+leerSensor();
+Serial.print("Lectura de temperatura:");
+Serial.println(Temperatura);
+delay(1000);
   
   
 
@@ -137,7 +129,7 @@ void loop()
 
 //Funciones auxiliares
 void leerSensor(){
-  Temperatura=bmp.readTemperature();
+  Temperatura= termo.readTemperatureC();
 }
 void setAllPixelsColor(uint32_t color) {
     pixels.clear(); // Opcional, pero ayuda a asegurar que los colores anteriores se borren
